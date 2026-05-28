@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import { handleWebRtcSignaling } from './websocket/signal';
+import { Request, Response } from "express";
 
 dotenv.config();
 
