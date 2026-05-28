@@ -24,7 +24,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // Health Check Node
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ONLINE',
     uptime: process.uptime(),
