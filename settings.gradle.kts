@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Texa"
+rootProject.name = "My Application"
 
 include(":app")

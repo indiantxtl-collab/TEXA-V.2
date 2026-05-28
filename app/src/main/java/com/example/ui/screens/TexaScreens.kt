@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ChatEntity
 import com.example.data.CommunityEntity
 import com.example.data.MessageEntity
@@ -100,13 +102,113 @@ fun TexaAppScreen(viewModel: TexaViewModel) {
 // 1. SPLASH SCREEN
 // ==========================================
 @Composable
+fun TexaAnimatedLogo(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "logo_anim")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+    val glowSize by infiniteTransition.animateFloat(
+        initialValue = 10f,
+        targetValue = 50f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+
+    Canvas(modifier = modifier.scale(scale)) {
+        val w = size.width
+        val h = size.height
+
+        // Background Glow
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x2AA8811A), Color.Transparent),
+                radius = w * 0.8f
+            ),
+            radius = w * 0.5f + glowSize
+        )
+
+        // 1. Left Bubble (Premium Dark Slate-Charcoal)
+        val leftPath = Path().apply {
+            val rx = w * 0.45f
+            val ry = h * 0.45f
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(w * 0.1f, h * 0.1f, w * 0.75f, h * 0.75f),
+                startAngleDegrees = 135f,
+                sweepAngleDegrees = 180f,
+                forceMoveTo = true
+            )
+            lineTo(w * 0.15f, h * 0.75f)
+            quadraticTo(w * 0.12f, h * 0.88f, w * 0.05f, h * 0.92f)
+            quadraticTo(w * 0.22f, h * 0.90f, w * 0.35f, h * 0.82f)
+            close()
+        }
+        drawPath(leftPath, color = Color(0xFF2C313C))
+
+        // 2. Right Bubble (Yellow/Gold Accent)
+        val rightPath = Path().apply {
+            val rx = w * 0.45f
+            val ry = h * 0.45f
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(w * 0.25f, w * 0.25f, w * 0.9f, h * 0.9f),
+                startAngleDegrees = -45f,
+                sweepAngleDegrees = 180f,
+                forceMoveTo = true
+            )
+            lineTo(w * 0.85f, h * 0.85f)
+            quadraticTo(w * 0.88f, h * 0.95f, w * 0.95f, h * 0.98f)
+            quadraticTo(w * 0.78f, h * 0.96f, w * 0.65f, h * 0.88f)
+            close()
+        }
+        drawPath(rightPath, color = Color(0xFFEAB308))
+
+        // 3. Central White Rounded Card
+        val cardSize = w * 0.4f
+        drawRoundRect(
+            color = Color.White,
+            topLeft = androidx.compose.ui.geometry.Offset((w - cardSize)/2, (h - cardSize)/2),
+            size = androidx.compose.ui.geometry.Size(cardSize, cardSize),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.1f, w * 0.1f)
+        )
+
+        // 4. Center Keyhole (Premium Charcoal)
+        val cx = w / 2f
+        val cy = h / 2f
+        
+        // Head
+        drawCircle(
+            color = Color(0xFF2C313C),
+            radius = w * 0.05f,
+            center = androidx.compose.ui.geometry.Offset(cx, cy - h * 0.02f)
+        )
+        // Trailing keyhole slot
+        val slotPath = Path().apply {
+            moveTo(cx - w * 0.03f, cy + h * 0.01f)
+            lineTo(cx + w * 0.03f, cy + h * 0.01f)
+            lineTo(cx + w * 0.05f, cy + h * 0.10f)
+            lineTo(cx - w * 0.05f, cy + h * 0.10f)
+            close()
+        }
+        drawPath(slotPath, color = Color(0xFF2C313C))
+    }
+}
+
+@Composable
 fun SplashScreen() {
     val infiniteTransition = rememberInfiniteTransition(label = "splash")
     val alphaAnim by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
+        initialValue = 0.5f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
+            animation = tween(1500, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
@@ -115,45 +217,26 @@ fun SplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TexaOnyx),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(TexaSaltGold, TexaWarmCream)
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(110.dp)
-                    .drawBehind {
-                        drawCircle(
-                            Brush.radialGradient(
-                                colors = listOf(TexaGold.copy(alpha = 0.25f), Color.Transparent)
-                            ),
-                            radius = size.width / 1.1f
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Shield,
-                    contentDescription = "TEXA Shield",
-                    tint = TexaGold,
-                    modifier = Modifier.size(72.dp)
-                )
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Inner Lock",
-                    tint = TexaOnyx,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            TexaAnimatedLogo(
+                modifier = Modifier.size(150.dp)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
                 text = "TEXA",
-                color = Color.White,
+                color = TexaOnyx,
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 8.sp,
@@ -164,7 +247,7 @@ fun SplashScreen() {
                 text = "C O N N E C T   B E Y O N D   L I M I T S",
                 color = TexaGold,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -178,10 +261,10 @@ fun SplashScreen() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "initializing secure enclave...",
+                text = "initializing secure E2EE enclaves...",
                 color = TexaGreyMedium,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
             )
         }
@@ -220,7 +303,11 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TexaWhite)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(TexaSaltGold, TexaWarmCream)
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -344,10 +431,15 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
 // ==========================================
 @Composable
 fun PhoneInputScreen(viewModel: TexaViewModel) {
+    val connectionByState by viewModel.connectionState.collectAsStateWithLifecycle()
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TexaWhite)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(TexaSaltGold, TexaWarmCream)
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -358,6 +450,30 @@ fun PhoneInputScreen(viewModel: TexaViewModel) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
+                // Connection Indicator Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(Color(0x1AD59B27), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(TexaGreen, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "SECURE TUNNEL: $connectionByState",
+                        color = TexaGold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Text(
                     text = "Initiate Tunnel Identity",
                     color = TexaOnyx,
@@ -365,7 +481,7 @@ fun PhoneInputScreen(viewModel: TexaViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Enter phone network anchor. We transmit a zero-knowledge hardware encrypted OTP validation frame.",
+                    text = "Enter phone network anchor. We transmit a zero-knowledge hardware encrypted OTP validation frame via secure Twilio verify gate.",
                     color = TexaGreyMedium,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
@@ -390,24 +506,53 @@ fun PhoneInputScreen(viewModel: TexaViewModel) {
                         Icon(Icons.Default.Phone, contentDescription = "Phone icon", tint = TexaGold)
                     }
                 )
+
+                viewModel.otpError?.let { err ->
+                    Text(
+                        text = err,
+                        color = if (err.contains("active", ignoreCase = true)) TexaGold else TexaRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             }
 
-            LuxuryGoldCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("send_otp_button")
-            ) {
-                Button(
-                    onClick = {
-                        if (viewModel.phoneNumber.isNotBlank()) {
-                            viewModel.proceedToOTP()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    modifier = Modifier.fillMaxSize()
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (viewModel.isOtpSending) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = TexaGold, modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                LuxuryGoldCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .testTag("send_otp_button")
                 ) {
-                    Text("TRANSMIT OTP", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Button(
+                        onClick = {
+                            if (viewModel.phoneNumber.isNotBlank() && !viewModel.isOtpSending) {
+                                viewModel.sendTwilioOtp(viewModel.phoneNumber)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.fillMaxSize(),
+                        enabled = !viewModel.isOtpSending
+                    ) {
+                        Text(
+                            text = if (viewModel.isOtpSending) "SYNCHRONIZING..." else "TRANSMIT OTP",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }
@@ -422,7 +567,11 @@ fun OTPVerificationScreen(viewModel: TexaViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TexaWhite)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(TexaSaltGold, TexaWarmCream)
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -440,7 +589,7 @@ fun OTPVerificationScreen(viewModel: TexaViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "A military-grade challenge has been synchronized with ${viewModel.phoneNumber}. Input authorization hash code:",
+                    text = "A military-grade challenge has been synchronized with ${viewModel.phoneNumber}. Input authorization hash code derived from Twilio MFA secure gateway:",
                     color = TexaGreyMedium,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
@@ -465,24 +614,53 @@ fun OTPVerificationScreen(viewModel: TexaViewModel) {
                         Icon(Icons.Default.Fingerprint, contentDescription = "OTP token", tint = TexaGold)
                     }
                 )
+
+                viewModel.otpError?.let { err ->
+                    Text(
+                        text = err,
+                        color = TexaRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             }
 
-            LuxuryGoldCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("verify_otp_button")
-            ) {
-                Button(
-                    onClick = {
-                        if (viewModel.otpCode.length >= 4) {
-                            viewModel.verifyOTP()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    modifier = Modifier.fillMaxSize()
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (viewModel.isOtpSending) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = TexaGold, modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                LuxuryGoldCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .testTag("verify_otp_button")
                 ) {
-                    Text("VERIFY CHALLENGE HASH", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Button(
+                        onClick = {
+                            if (viewModel.otpCode.length >= 4 && !viewModel.isOtpSending) {
+                                viewModel.verifyTwilioOtp(viewModel.otpCode)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.fillMaxSize(),
+                        enabled = !viewModel.isOtpSending
+                    ) {
+                        Text(
+                            text = if (viewModel.isOtpSending) "AUTHENTICATING..." else "VERIFY CHALLENGE HASH",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }
@@ -1098,6 +1276,7 @@ fun CommunitiesTabScreen(viewModel: TexaViewModel) {
 @Composable
 fun EnterpriseSecurityDashboardScreen(viewModel: TexaViewModel) {
     val systemLogs by viewModel.securityLogs.collectAsState()
+    val activeSessions by viewModel.sessions.collectAsState()
 
     Column(
         modifier = Modifier
@@ -1135,12 +1314,12 @@ fun EnterpriseSecurityDashboardScreen(viewModel: TexaViewModel) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .background(Color(0xFF34C759).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                    .background(Color(0xFF10B981).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = "PFS RATCHET ACTIVE",
-                    color = Color(0xFF34C759),
+                    color = Color(0xFF10B981),
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1227,15 +1406,6 @@ fun EnterpriseSecurityDashboardScreen(viewModel: TexaViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "ENCLAVE JOURNAL LOGS",
-            color = Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            letterSpacing = 1.sp
-        )
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1243,6 +1413,78 @@ fun EnterpriseSecurityDashboardScreen(viewModel: TexaViewModel) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Section 1: ACTIVE COCKPIT SESSIONS
+            item {
+                Text(
+                    text = "ACTIVE SESSIONS & DEVICES",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    letterSpacing = 1.sp
+                )
+            }
+
+            items(activeSessions) { session ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0x06FFFFFF), RoundedCornerShape(8.dp))
+                        .border(0.5.dp, Color(0x1AFFFFFF), RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(session.deviceName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                if (session.isCurrent) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .background(TexaGreen.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    ) {
+                                        Text("CURRENT", color = TexaGreen, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                            Text(session.location, color = TexaGreyMedium, fontSize = 11.sp)
+                            Text("Key fingerprint: ${session.sessionKeyFingerprint}", color = TexaGold, fontSize = 9.sp)
+                        }
+
+                        if (!session.isCurrent) {
+                            IconButton(
+                                onClick = { viewModel.terminateDeviceSession(session.id) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Cancel,
+                                    contentDescription = "Revoke Session",
+                                    tint = TexaRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "ENCLAVE JOURNAL LOGS",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    letterSpacing = 1.sp
+                )
+            }
+
             items(systemLogs) { log ->
                 val categoryColor = when (log.eventType) {
                     "KEY_ROTATION" -> TexaGold

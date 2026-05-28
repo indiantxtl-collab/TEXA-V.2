@@ -5,22 +5,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = TexaGold,
     secondary = TexaGoldLight,
-    background = TexaOnyx,
-    surface = TexaOnyx,
-    onPrimary = TexaOnyx,
+    background = TexaOnyx, // Elegant warm stone/charcoal
+    surface = Color(0xFF24221F), // Warmer dark charcoal surface
+    onPrimary = TexaWhite,
     onSecondary = TexaGold,
-    onBackground = TexaWhite,
+    onBackground = TexaSaltGold,
     onSurface = TexaWhite
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = TexaGold,
     secondary = TexaGoldLight,
-    background = TexaOffWhite,
+    background = TexaWarmCream, // High premium warm cream
     surface = TexaWhite,
     onPrimary = TexaWhite,
     onSecondary = TexaOnyx,

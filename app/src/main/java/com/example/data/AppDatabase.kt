@@ -31,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "texa_secure_database.db"
                 )
-                .fallbackToDestructiveMigration() // Facilitate updates during design review
+                .fallbackToDestructiveMigration(dropAllTables = true) // Facilitate clean updates during design review
                 .build()
                 INSTANCE = instance
                 instance
