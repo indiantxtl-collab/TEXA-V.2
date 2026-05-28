@@ -1,0 +1,6 @@
+{
+  "name": "TEXA",
+  "description": "Connect Beyond Limits. The ultra-secure, next-generation real-time communication platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
