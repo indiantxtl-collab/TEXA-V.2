@@ -278,6 +278,7 @@ class OnboardPage(val title: String, val subtitle: String, val icon: ImageVector
 
 @Composable
 fun OnboardingScreen(viewModel: TexaViewModel) {
+    val context = LocalContext.current
     val pages = remember {
         listOf(
             OnboardPage(
@@ -294,11 +295,28 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
                 "Zero Personal Analytics",
                 "Zero tracking logs. No advertising metadata. Dynamic RAM cache clears automatically upon exiting secret rooms.",
                 Icons.Default.CloudQueue
+            ),
+            OnboardPage(
+                "Secure System Anchors",
+                "To establish secure Double-Ratchet keys, find local mesh routers, access secure voice channels, and deliver instant sync frames, activate hardware permissions.",
+                Icons.Default.VpnKey
             )
         )
     }
 
     var currentPage by remember { mutableStateOf(0) }
+
+    // Real dynamic Android runtime permissions trigger
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        // Sync local contacts if read contacts was granted
+        if (results[android.Manifest.permission.READ_CONTACTS] == true) {
+            viewModel.networkManager.syncDeviceContacts()
+        }
+        viewModel.networkManager.discoverOfflineMeshPeers()
+        viewModel.proceedToPhone()
+    }
 
     Box(
         modifier = Modifier
@@ -342,7 +360,7 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(180.dp)
+                        .size(150.dp)
                         .background(TexaOffWhite, shape = CircleShape)
                         .border(1.dp, TexaGoldLight, CircleShape),
                     contentAlignment = Alignment.Center
@@ -351,31 +369,59 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
                         imageVector = pages[currentPage].icon,
                         contentDescription = "Onboarding Features",
                         tint = TexaGold,
-                        modifier = Modifier.size(84.dp)
+                        modifier = Modifier.size(72.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
                     text = pages[currentPage].title,
                     color = TexaOnyx,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = pages[currentPage].subtitle,
                     color = TexaGreyMedium,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     textAlign = TextAlign.Center,
-                    lineHeight = 22.sp,
+                    lineHeight = 20.sp,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
+
+                if (currentPage == pages.size - 1) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    // Gorgeous visual representation of requested permissions
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        listOf(
+                            Icons.Default.Contacts to "Contacts",
+                            Icons.Default.Camera to "Camera",
+                            Icons.Default.Mic to "Mic",
+                            Icons.Default.Sensors to "Mesh"
+                        ).forEach { (icon, name) ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .background(TexaGoldLight.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                    .border(0.5.dp, TexaGold.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Icon(icon, contentDescription = name, tint = TexaGold, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(name, color = TexaOnyx, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -406,7 +452,24 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
                             if (currentPage < pages.size - 1) {
                                 currentPage++
                             } else {
-                                viewModel.proceedToPhone()
+                                // Request all needed permissions from the checklist
+                                val permissionsArray = mutableListOf<String>()
+                                permissionsArray.add(android.Manifest.permission.READ_CONTACTS)
+                                permissionsArray.add(android.Manifest.permission.CAMERA)
+                                permissionsArray.add(android.Manifest.permission.RECORD_AUDIO)
+                                permissionsArray.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                permissionsArray.add(android.Manifest.permission.BLUETOOTH)
+                                permissionsArray.add(android.Manifest.permission.BLUETOOTH_ADMIN)
+                                
+                                // BLE and WiFi permissions for Mesh Network Discovery (conditional or flat list)
+                                permissionsArray.add("android.permission.BLUETOOTH_SCAN")
+                                permissionsArray.add("android.permission.BLUETOOTH_ADVERTISE")
+                                permissionsArray.add("android.permission.BLUETOOTH_CONNECT")
+                                permissionsArray.add("android.permission.NEARBY_WIFI_DEVICES")
+                                permissionsArray.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                                permissionsArray.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+                                permissionLauncher.launch(permissionsArray.toTypedArray())
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
@@ -414,7 +477,7 @@ fun OnboardingScreen(viewModel: TexaViewModel) {
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            text = if (currentPage == pages.size - 1) "GET SECURED" else "CONTINUE",
+                            text = if (currentPage == pages.size - 1) "AUTHORIZE & CONNECT" else "CONTINUE",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp

@@ -1,0 +1,88 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String            @id @default(uuid())
+  phoneNumber          String            @unique
+  username             String?           @unique
+  avatarId             String            @default("avatar_gold")
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  
+  // Crytographic parameters (Perfect Forward Secrecy)
+  identityKey          String            // Base64 encoded Ed25519 identity key
+  signedPreKey         String            // Base64 encoded X25519 prekey
+  preKeySignature      String            // Signature of signedPreKey
+
+  sessions             DeviceSession[]
+  communities          CommunityMember[]
+  messages             Message[]
+}
+
+model DeviceSession {
+  id                   String            @id @default(uuid())
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName           String
+  deviceFingerprint    String            @unique
+  sessionKeyFingerprint String
+  location             String            @default("Unknown Secure Enclave")
+  isCurrent            Boolean           @default(false)
+  ipAddress            String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model Community {
+  id          String            @id @default(uuid())
+  name        String
+  description String?
+  creatorId   String
+  createdAt   DateTime          @default(now())
+  
+  members     CommunityMember[]
+  channels    Channel[]
+}
+
+model CommunityMember {
+  id          String            @id @default(uuid())
+  communityId String
+  community   Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String            @default("MEMBER") // ADMIN, MODERATOR, MEMBER
+  joinedAt    DateTime          @default(now())
+}
+
+model Channel {
+  id          String            @id @default(uuid())
+  communityId String
+  community   Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  name        String
+  type        String            @default("TEXT") // TEXT, VOICE_ROOM, VIDEO_ROOM
+  createdAt   DateTime          @default(now())
+  messages    Message[]
+}
+
+model Message {
+  id               String            @id @default(uuid())
+  senderId         String
+  sender           User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  channelId        String?
+  channel          Channel?          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  // E2EE ciphertext fields (never stored in plain text!)
+  encryptedPayload String            // AES-256-GCM encrypted ciphertext
+  fingerprintIv    String            // IV of GCM symmetric key
+  recipientId      String?           // For 1-on-1 chats
+  mediaUrl         String?           // Encrypted media chunks pointers
+  
+  status           String            @default("SENT") // SENT, DELIVERED, SEEN
+  createdAt        DateTime          @default(now())
+}

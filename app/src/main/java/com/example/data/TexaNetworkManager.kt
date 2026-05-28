@@ -121,53 +121,91 @@ class TexaNetworkManager(private val context: Context) {
         }
     }
 
+    private fun hasPermission(permission: String): Boolean {
+        return try {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun hasBluetoothPermissions(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            hasPermission(android.Manifest.permission.BLUETOOTH_SCAN) &&
+                    hasPermission(android.Manifest.permission.BLUETOOTH_CONNECT) &&
+                    hasPermission(android.Manifest.permission.BLUETOOTH_ADVERTISE)
+        } else {
+            hasPermission(android.Manifest.permission.BLUETOOTH) &&
+                    hasPermission(android.Manifest.permission.BLUETOOTH_ADMIN)
+        }
+    }
+
+    private fun hasWifiDirectPermissions(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            hasPermission("android.permission.NEARBY_WIFI_DEVICES")
+        } else {
+            hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
     fun discoverOfflineMeshPeers() {
         scope.launch {
             // Real Wi-Fi Direct peer scanning trigger
             try {
-                wifiP2pManager?.discoverPeers(wifiChannel, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        Log.d(tag, "WiFi Direct peer scanner initiated successfully.")
-                    }
-                    override fun onFailure(reason: Int) {
-                        Log.e(tag, "WiFi Direct peer scan initialization failed. Code: $reason")
-                    }
-                })
-
-                // BLE Mesh advertisement/scanning setup
-                val advertiser = bluetoothAdapter?.bluetoothLeAdvertiser
-                val settings = AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
-                    .setConnectable(false)
-                    .build()
-
-                val data = AdvertiseData.Builder()
-                    .addServiceUuid(ParcelUuid(UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb")))
-                    .setIncludeDeviceName(true)
-                    .build()
-
-                advertiser?.startAdvertising(settings, data, object : AdvertiseCallback() {
-                    override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
-                        Log.d(tag, "Bluetooth Mesh relay beacon active.")
-                    }
-                    override fun onStartFailure(errorCode: Int) {
-                        Log.e(tag, "Bluetooth Mesh beacon failed: $errorCode")
-                    }
-                })
-
-                // BLE Scan logic
-                val scanner = bluetoothAdapter?.bluetoothLeScanner
-                scanner?.startScan(object : ScanCallback() {
-                    override fun onScanResult(callbackType: Int, result: ScanResult) {
-                        val name = result.device.name ?: result.device.address
-                        if (name != null && !_peerMeshDevices.value.contains(name)) {
-                            _peerMeshDevices.value = _peerMeshDevices.value + name
+                if (hasWifiDirectPermissions()) {
+                    wifiP2pManager?.discoverPeers(wifiChannel, object : WifiP2pManager.ActionListener {
+                        override fun onSuccess() {
+                            Log.d(tag, "WiFi Direct peer scanner initiated successfully.")
                         }
-                    }
-                })
+                        override fun onFailure(reason: Int) {
+                            Log.e(tag, "WiFi Direct peer scan initialization failed. Code: $reason")
+                        }
+                    })
+                } else {
+                    Log.d(tag, "Skipping WiFi Direct peer discovery due to missing permissions.")
+                }
 
-                // Fallback virtual mesh relay listing if hardware is restricted on preview emulator
+                if (hasBluetoothPermissions()) {
+                    // BLE Mesh advertisement/scanning setup
+                    val advertiser = bluetoothAdapter?.bluetoothLeAdvertiser
+                    val settings = AdvertiseSettings.Builder()
+                        .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+                        .setConnectable(false)
+                        .build()
+
+                    val data = AdvertiseData.Builder()
+                        .addServiceUuid(ParcelUuid(UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb")))
+                        .setIncludeDeviceName(true)
+                        .build()
+
+                    advertiser?.startAdvertising(settings, data, object : AdvertiseCallback() {
+                        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
+                            Log.d(tag, "Bluetooth Mesh relay beacon active.")
+                        }
+                        override fun onStartFailure(errorCode: Int) {
+                            Log.e(tag, "Bluetooth Mesh beacon failed: $errorCode")
+                        }
+                    })
+
+                    // BLE Scan logic
+                    val scanner = bluetoothAdapter?.bluetoothLeScanner
+                    scanner?.startScan(object : ScanCallback() {
+                        override fun onScanResult(callbackType: Int, result: ScanResult) {
+                            val name = result.device.name ?: result.device.address
+                            if (name != null && !_peerMeshDevices.value.contains(name)) {
+                                _peerMeshDevices.value = _peerMeshDevices.value + name
+                            }
+                        }
+                    })
+                } else {
+                    Log.d(tag, "Skipping BLE Mesh discovery due to missing permissions.")
+                }
+
+                // Fallback virtual mesh relay listing if hardware is restricted or scanning returned empty
                 if (_peerMeshDevices.value.isEmpty()) {
                     _peerMeshDevices.value = listOf("OffGrid Node TR-9", "Direct-Link Pixel 9 Pro", "Mesh Relay-Node G4")
                 }
